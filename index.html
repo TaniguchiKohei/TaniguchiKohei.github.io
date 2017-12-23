@@ -1,0 +1,560 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>PresentationTrainerForBibliobattle</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css?family=Bungee" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Pangolin|Ubuntu" rel="stylesheet">
+  <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script type="text/javascript" src="//cdn.webrtc.ecl.ntt.com/skyway-latest.js"></script>
+  <script type="text/javascript" src="key.js"></script>
+  <script type="text/javascript" src="script.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/4.8.1/firebase.js"></script>
+  <script>
+    // Initialize Firebase
+    var config = {
+      apiKey: "AIzaSyAjLL_olV4y-hRyzfmb7ionebUyABNyqFc",
+      authDomain: "researchgraduation-5315a.firebaseapp.com",
+      databaseURL: "https://researchgraduation-5315a.firebaseio.com",
+      projectId: "researchgraduation-5315a",
+      storageBucket: "",
+      messagingSenderId: "33911364938"
+    };
+    firebase.initializeApp(config);
+  </script>
+</head>
+
+<body>
+
+<!-- 選択フェイズ -->
+<div id="choose-phase">
+  <h1 id="title-name">Presentation　Trainer</h1>
+  <hr>
+  <div id="user-choose">
+    <h1>Which　do　you　want　to　play　a　role?</h1>
+    <h2>Press either button.</h2>
+    <p><br><button id="presenter-role"><img src="./presenter.png" width="400" height="300"></button>　<button id="listener-role"><img src="./listener.png" width="400" height="300"></button></p>
+    <p id="role-detail">PRESENTER 　　　　　　　　LISTENER</p>
+  </div>
+</div>
+
+<div id="video-area">
+  <!-- プレゼンテーションエリア -->
+  <div id="video-container">
+    <video id="video" autoplay playsinline></video>
+    <div id="presentation-data">
+      <!-- 残り時間の表示 -->
+      <p>
+        LEFT TIME<br>
+        <span id="timer"></span>
+      </p>
+      <!-- リスナーの数や反応を表示する箇所 -->
+      <div id="listerner-room"></div>
+    </div>
+  </div>
+
+  <hr>
+</div>
+
+<!-- マッチング -->
+<div id="match-phase">
+  <p id="room-name">Room ID is "<span id="room-id"></span>".</p>
+  <p>Please input this ID below the form.</p>
+  <form id="watch">
+      <input type="text" placeholder="Call user id..." id="callto-id">
+      <button href="#" id="watching" type="submit">Watch</button>
+  </form>
+</div>
+
+<!-- Get local audio/video stream -->
+<div id="start-bloadcast">
+  <div id="step1">
+    <p id="broadcastid">Your id: <span id="my-id">...</span></p>
+
+    <div id="first-step">
+      <p> STEP1 : Press "Broadcast" button. </p>
+      <form id="broadcast">
+        <button href="#" type="submit">Broadcast</button>
+      </form>
+    </div>
+    <div id="second-step">
+      <p> STEP2 : Press "Open" button. </p>
+      <form>
+        <button id="openroom" type="button">Open</button>
+      </form>
+    </div>
+    <div id="third-step">
+      <p>
+        STEP3 : Please wait until someone join this room. <br>
+        But you want to start presentation, Press "Start" button.
+      </p>
+      <button id="start-timer" type="button">Start</button>
+    </div>
+  </div>
+</div>
+
+<!-- コンテンツ -->
+<div id="contents">
+
+  <div id="listener-contents">
+    <p>You choose and press button similar your reaction.</p>
+    <div id="reaction-changer">
+      <button id="ch-neutral">Neutral　<img src="./neutral.png" width="50" height="50"></button>
+      <button id="ch-boring">Boring　<img src="./boring.png" width="50" height="50"></button>
+      <button id="ch-excite">Excite　<img src="./excite.png" width="50" height="50"></button>
+      <button id="ch-gohome">Go home　<img src="./gohome.png" width="50" height="50"></button>
+      <button id="ch-interest">Interesting　<img src="./interest.png" width="50" height="50"></button>
+      <button id="ch-understand">Understand　<img src="./understand.png" width="50" height="50"></button>
+      <button id="ch-notunderstand">Not understand　<img src="./notunderstand.png" width="50" height="50"></button>
+      <button id="ch-sleepy">Sleepy　<img src="./sleepy.png" width="50" height="50"></button>
+    </div>
+  </div>
+
+</div>
+
+<div id="vote">
+  <h1>Thank you for watching!</h1>
+  <p>If you want to read the presentationing book, press "Vote" button.</p>
+  <button id="want-to-read">Vote</button>
+</div>
+
+<div id="presentation-stats">
+  <canvas id="my-chart" width="1000" height="700"></canvas>
+  <div>
+    <h1>Number of People who want to read: <span id="vote-stats"></span></h1>
+  </div>
+</div>
+
+<script type="text/javascript">
+  $('#start-bloadcast').fadeIn(1000);
+  $('#match-phase').fadeIn(1000);
+  $('#contents').fadeIn(1000);
+  $('#video-area').fadeIn(1000);
+  $('#broadcastid').fadeIn(1000);
+  $('#room-name').fadeIn(1000);
+  const PRESENTER = 0;
+  const LISTENER = 1;
+
+  // 反応の種類の数だけ定数を定義
+  const NO_DEFINE = -1;
+  const NEUTRAL = 0;
+  const BORING = 1;
+  const EXCITE = 2;
+  const GO_HOME = 3;
+  const INTEREST = 4;
+  const NOT_UNDERSTAND = 5;
+  const UNDERSTAND = 6;
+  const SLEEPY = 7;
+  const REACTION_NUM = 8;
+
+  // ユーザーデータ
+  var myRole;
+  var myReaction = NO_DEFINE;
+  var userID;
+  var isChanged = false;
+
+  window.onload = function(){
+    document.getElementById("start-timer").onclick = startTimer;
+    document.getElementById("presenter-role").onclick = playPresenter;
+    document.getElementById("listener-role").onclick = playListener;
+    document.getElementById("openroom").onclick = openRoom;
+    document.getElementById("first-step").onclick = goSecondStep;
+    document.getElementById("second-step").onclick = goThirdStep;
+    document.getElementById("third-step").onclick = startPresentation;
+    document.getElementById("want-to-read").onclick = vote;
+    // リスナーの反応ボタンの設定
+    document.getElementById("ch-neutral").onclick = changeNeutral;
+    document.getElementById("ch-boring").onclick = changeBoring;
+    document.getElementById("ch-excite").onclick = changeExcite;
+    document.getElementById("ch-gohome").onclick = changeGoHome;
+    document.getElementById("ch-interest").onclick = changeInterest;
+    document.getElementById("ch-notunderstand").onclick = changeNotUnderstand;
+    document.getElementById("ch-understand").onclick = changeUnderstand;
+    document.getElementById("ch-sleepy").onclick = changeSleepy;
+    document.getElementById("watching").onclick = startWatch; // 視聴開始ボタン
+    $('#match-phase').hide();
+    $('#contents').hide();
+    $('#start-bloadcast').hide();
+    $('#video-area').hide();
+    $('#broadcastid').hide();
+    $('#room-name').hide();
+    $('#presentation-stats').hide();
+    $('#vote').hide();
+  }
+
+
+
+  // 選んだ役割による表示切り替えを行う
+  var playPresenter = function(){
+    myRole = PRESENTER;
+    $('#choose-phase').hide();
+
+    $('#video-area').show();
+    $('#start-bloadcast').show();
+    $('#second-step').hide();
+    $('#third-step').hide();
+  }
+  var playListener = function(){
+    myRole = LISTENER;
+    $('#choose-phase').hide();
+    $('#video-area').show();
+    $('#match-phase').show();
+    $('#room-name').show();
+  }
+
+  var goSecondStep = function(){
+    $('#first-step').hide();
+    $('#second-step').show();
+  }
+
+  var goThirdStep = function(){
+    $('#second-step').hide();
+    $('#third-step').show();
+  }
+
+  var startPresentation = function(){
+    $('#third-step').hide();
+  }
+
+  // データベースをいじるための変数
+  var db = firebase.database();
+  var userNumRef = db.ref("/roomData");
+  var roomIDRef = db.ref("/roomData");
+  var userDataRef = db.ref("/users");
+  var roomDataRef = db.ref("/roomData");
+  var timeDataRef = db.ref("/roomData/leftTime");
+  var voteDataRef = db.ref("/roomData/vote");
+
+  // 反応の変更ボタン
+  var changeNeutral = function(){ myReaction = NEUTRAL; isChanged=true; }
+  var changeBoring = function(){ myReaction = BORING; isChanged=true; }
+  var changeExcite = function(){ myReaction = EXCITE; isChanged=true; }
+  var changeGoHome = function(){ myReaction = GO_HOME; isChanged=true; }
+  var changeInterest = function(){ myReaction = INTEREST; isChanged=true; }
+  var changeNotUnderstand = function(){ myReaction = NOT_UNDERSTAND; isChanged=true; }
+  var changeUnderstand = function(){ myReaction = UNDERSTAND; isChanged=true; }
+  var changeSleepy = function(){ myReaction = SLEEPY; isChanged=true; }
+
+  // 公開されているルームのIDを表示
+  roomIDRef.on("value", function(snapshot) {
+    document.getElementById("room-id").innerText = snapshot.val().roomID;
+  });
+
+  userDataRef.on("value",function(snapshot){
+    $('#listerner-room').empty();
+    userNumRef.once("value", function(snapshot) {
+      var listenerNum = snapshot.val().listenerNum;
+      for(var i=1;i<=50;i++){
+        var userRef = db.ref("/users/user"+i);
+        userRef.once("value", function(snapshot) {
+          if(i<=listenerNum){
+            switch(snapshot.val().reactionState){
+              case NEUTRAL: $('#listerner-room').append('<img src="./neutral.png" width="50" height="50">'); break;
+              case BORING: $('#listerner-room').append('<img src="./boring.png" width="50" height="50">'); break;
+              case EXCITE: $('#listerner-room').append('<img src="./excite.png" width="50" height="50">'); break;
+              case GO_HOME: $('#listerner-room').append('<img src="./gohome.png" width="50" height="50">'); break;
+              case INTEREST: $('#listerner-room').append('<img src="./interest.png" width="50" height="50">'); break;
+              case NOT_UNDERSTAND: $('#listerner-room').append('<img src="./notunderstand.png" width="50" height="50">'); break;
+              case UNDERSTAND: $('#listerner-room').append('<img src="./understand.png" width="50" height="50">'); break;
+              case SLEEPY: $('#listerner-room').append('<img src="./sleepy.png" width="50" height="50">'); break;
+            }
+          }
+          else{
+            $('#listerner-room').append('<img src="./nodefine.png" width="50" height="50">');
+          }
+          if(i%10==0&&i!=50){
+            $('#listerner-room').append('<br>');
+          }
+        });
+      }
+    });
+  });
+
+  timeDataRef.on("value", function(snapshot){
+    var left = snapshot.val();
+    if(left%30==0 && left!=300){
+      getReactionAnalytics();
+      drawPresentationData();
+    }
+    if(left==0){
+      isStart = 0;
+      if(myRole==PRESENTER){
+        $('#presentation-stats').show();
+      }else{
+        $('#contents').hide();
+        $('#vote').show();
+      }
+      $('#video-area').hide();
+    }
+  });
+
+  voteDataRef.on("value",function(snapshot){
+    var listenerNum;
+    userNumRef.once("value",function(snapshot2){
+      listenerNum = snapshot2.val().listenerNum;
+      $('#vote-stats').empty();
+      $('#vote-stats').append(snapshot.val()+"/"+listenerNum);
+    });
+  });
+
+  roomDataRef.on("value", function(snapshot) {
+
+    // プレゼンテーションの残り時間の表示
+    var seconds = snapshot.val().leftTime;
+
+    var min = Math.floor(( seconds / 60 ) % 60);
+    var sec = Math.floor(seconds % 60);
+
+    var result = "";
+    if(min>0){ result += min + ":"; }
+    if(sec>=0){
+      if(sec>=10){
+        result += sec;
+      }else{
+        result += "0"+sec;
+      }
+    }
+    document.getElementById("timer").innerText = result;
+  });
+
+  var vote = function(){
+    var voteN;
+    roomDataRef.once("value",function(snapshot){
+      voteN = snapshot.val().vote;
+      voteN++;
+      var updates = {};
+      updates['/vote/'] = voteN;
+      roomDataRef.update(updates);
+    });
+    $('#want-to-read').hide();
+  }
+
+  // ルームの開放
+  var openRoom = function(){
+    var roomid = $('#my-id').text();
+    var updates = {};
+    updates['/roomID/'] = roomid;
+    roomIDRef.update(updates);
+  }
+
+  // 反応の反映
+  var updateReaction = function(){
+    if(isChanged){
+      var ref = db.ref("/users/"+userID);
+      var updates = {};
+      updates['/reactionState/'] = myReaction;
+      ref.update(updates);
+      isChanged = false;
+    }
+  }
+  setInterval(updateReaction,10);
+
+  // 視聴開始ボタン
+  var startWatch = function(){
+    userNumRef.once("value", function(snapshot) {
+      // リスナー数の更新
+      var listenerNum = snapshot.val().listenerNum;
+      listenerNum++;
+      var updates = {};
+      updates['/listenerNum/'] = listenerNum;
+      userNumRef.update(updates);
+      // ユーザデータの追加
+      userID = "user" + listenerNum;
+      myReaction = NEUTRAL;
+      var userRef = db.ref("/users/"+userID);
+      userRef.set(
+        {
+          ownSeat: listenerNum,
+          reactionState: myReaction
+        }
+      );
+    });
+    $('#match-phase').hide();
+    $('#contents').show();
+  };
+
+  // タイマースタートのフラグを用意
+  var isStart = 0;
+  // スタートフラグを立てる関数
+  var startTimer = function(){
+    isStart = 1;
+    drawPresentationData();
+  }
+  // カウントダウンする関数
+  var countDown = function(){
+    var second;
+    if(isStart==1){
+      roomDataRef.on("value", function(snapshot) {
+        second = snapshot.val().leftTime;
+      });
+      second--;
+      var updates = {};
+      updates['/leftTime/'] = second;
+      roomDataRef.update(updates);
+    }
+  }
+  // 1秒おきにカウントダウン関数を呼び出す
+  setInterval(countDown,1000);
+
+  var aNeutral = [0];
+  var aBoring = [0];
+  var aExcite = [0];
+  var aGoHome = [0];
+  var aInterest = [0];
+  var aNotUnderstand = [0];
+  var aUnderstand = [0];
+  var aSleepy = [0];
+
+  var drawPresentationData = function(){
+    var ctx = document.getElementById("my-chart").getContext('2d');
+    var myChart = new Chart(ctx,{
+        type: 'line',
+        data:{
+          labels:['0:00','0:30','1:00','1:30','2:00','2:30','3:00','3:30','4:00','4:30','5:00'],
+          datasets:[
+            {
+              label: 'Boring',
+              data: aBoring,
+              fill: false,
+              lineTension: 0,
+              backgroundColor: "rgb(255,0,0)",
+              borderColor: "rgb(255,0,0)"
+            },
+            {
+              label: 'Excite',
+              data: aExcite,
+              fill: false,
+              lineTension: 0,
+              backgroundColor: "rgb(0,255,0)",
+              borderColor: "rgb(0,255,0)"
+            },
+            {
+              label: 'GoHome',
+              data: aGoHome,
+              fill: false,
+              lineTension: 0,
+              backgroundColor: "rgb(0,0,255)",
+              borderColor: "rgb(0,0,255)"
+            },
+            {
+              label: 'Interest',
+              data: aInterest,
+              fill: false,
+              lineTension: 0,
+              backgroundColor: "rgb(255,0,255)",
+              borderColor: "rgb(255,0,255)"
+            },
+            {
+              label: 'Not Understand',
+              data: aNotUnderstand,
+              fill: false,
+              lineTension: 0,
+              backgroundColor: "rgb(255,255,0)",
+              borderColor: "rgb(255,255,0)"
+            },
+            {
+              label: 'Understand',
+              data: aUnderstand,
+              fill: false,
+              lineTension: 0,
+              backgroundColor: "rgb(0,255,255)",
+              borderColor: "rgb(0,255,255)"
+            },
+            {
+              label: 'Sleepy',
+              data: aSleepy,
+              fill: false,
+              lineTension: 0,
+              backgroundColor: "rgb(0,0,0)",
+              borderColor: "rgb(0,0,0)"
+            }
+          ]
+        },
+        options:{
+          legend:{
+            labels:{
+              fontSize: 20
+            }
+          },
+          responsive: false,
+          animation: false,
+          scales:{
+            xAxes:[
+              {
+                ticks: {
+                  fontSize: 20
+                }
+              }
+            ],
+            yAxes:[
+              {
+                ticks: {
+                  beginAtZero:true,
+                  min: 0,
+                  max: 50,
+                  fontSize: 15
+                }
+              }
+            ]
+          }
+        }
+    })
+  }
+
+  // 一定時間おきに反応データを取得する
+  var getReactionAnalytics = function(){
+    var neutralN = 0;
+    var boringN = 0;
+    var exciteN = 0;
+    var goHomeN = 0;
+    var interestN = 0;
+    var notUnderstandN = 0;
+    var sleepyN = 0;
+    var understandN = 0;
+    if(isStart==1){
+      userDataRef.on("value",function(snapshot){
+        userNumRef.once("value", function(snapshot2) {
+          var listenerNum = snapshot2.val().listenerNum;
+          for(var i=1;i<=listenerNum;i++){
+            var userRef = db.ref("/users/user"+i);
+            userRef.once("value", function(snapshot3) {
+              switch(snapshot3.val().reactionState){
+                case NEUTRAL: neutralN++; break;
+                case BORING: boringN++; break;
+                case EXCITE: exciteN++; break;
+                case GO_HOME: goHomeN++; break;
+                case INTEREST: interestN++; break;
+                case NOT_UNDERSTAND: notUnderstandN++; break;
+                case UNDERSTAND: understandN++; break;
+                case SLEEPY: sleepyN++; break;
+              }
+            });
+          }
+        });
+      });
+      var analyticsRef = db.ref("/roomData/reactionAnalysys");
+      var updates = {};
+      updates['/neutral/'] = neutralN;
+      updates['/boring/'] = boringN;
+      updates['/excite/'] = exciteN;
+      updates['/gohome/'] = goHomeN;
+      updates['/interest/'] = interestN;
+      updates['/notunderstand/'] = notUnderstandN;
+      updates['/sleepy/'] = sleepyN;
+      updates['/understand/'] = understandN;
+      analyticsRef.update(updates);
+
+      aNeutral.push(neutralN);
+      aBoring.push(boringN);
+      aExcite.push(exciteN);
+      aGoHome.push(goHomeN);
+      aInterest.push(interestN);
+      aNotUnderstand.push(notUnderstandN);
+      aUnderstand.push(understandN);
+      aSleepy.push(sleepyN);
+    }
+  }
+</script>
+</body>
+</html>
