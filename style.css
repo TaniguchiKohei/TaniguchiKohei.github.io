@@ -11,6 +11,10 @@ h1#title-name{
   text-align: center;
 }
 
+p#sys-detail{
+  font-family: "Ubuntu", cursive;
+}
+
 #user-choose{
   text-align: center;
 }
