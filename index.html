@@ -307,6 +307,7 @@
     var sec = Math.floor(seconds % 60);
 
     var result = "";
+    
     if(min>0){ result += min + ":"; }
     if(sec>=0){
       if(sec>=10){
@@ -315,7 +316,13 @@
         result += "0"+sec;
       }
     }
-    document.getElementById("timer").innerText = result;
+    var result2 = "";
+    if(sec>=10){
+      result2+= min + ":" + sec;
+    }else{
+      result2+= min+":0"+sec;
+    }
+    document.getElementById("timer").innerText = result2;
   });
 
   var vote = function(){
